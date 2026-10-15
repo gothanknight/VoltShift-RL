@@ -1,0 +1,30 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Model Checkpoints & Temporary Logs
+*.log
+.pytest_cache/
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large Rerun visual recording files (keep reports/ clean on git)
+reports/*.rrd
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
