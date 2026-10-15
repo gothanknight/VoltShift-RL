@@ -2,7 +2,7 @@
 
 VoltShift-RL is an AI-powered energy manager for a commercial delivery van depot. It coordinates rooftop solar panels, a large stationary storage battery, and 3 electric delivery vans under real Indian electricity rates (Time-of-Day tariffs).
 
-Instead of charging vehicles directly from the grid during expensive peak evening hours, the AI learns to catch free midday sunlight, store it in an on-site battery, and charge the vans off-grid. This cuts the depot's electricity bill by ~90% while making sure all delivery vans are 100% charged every morning.
+Instead of charging vehicles directly from the grid during expensive peak evening hours, the AI learns to catch free midday sunlight, store it in an on-site battery, and charge the vans off-grid. In the committed 7-day test, this cut the depot's electricity bill by 82.4%, and all three vans were at full charge (10.0 kWh) at 06:00 on all 7 mornings.
 
 ---
 
@@ -15,8 +15,8 @@ In places like India, electricity prices change depending on the time of day (DI
 
 Commercial delivery vans return to the depot around 18:00 (6:00 PM) with empty batteries.
 
-- The Bad Way (Unmanaged / Standard Depot): All vans plug in immediately at 6:00 PM. They pull maximum power from the grid during the Rs 12.50 peak rate. This causes massive electricity bills and risks blowing the depot's 15 kW grid transformer limit.
-- The VoltShift Way (AI Managed): The AI absorbs free solar power into a 30 kWh battery during noon. When the vans arrive at 6:00 PM, the battery discharges directly into the vans. Grid usage stays near 0 kW during peak hours, and the vans still leave fully charged at 6:00 AM.
+- The Bad Way (Unmanaged / Standard Depot): All vans plug in immediately at 6:00 PM and draw up to 15 kW from the grid during the Rs 12.50 peak rate. This raises the bill and sits right at the 15 kW transformer limit.
+- The VoltShift Way (AI Managed): The AI stores solar power in a 30 kWh battery during the day and uses it to charge the vans in the evening. In the committed test, grid use stayed below 7.1 kW, but the vans were not fully charged by 6:00 AM after day 1.
 
 ---
 
@@ -26,11 +26,19 @@ Here is the real comparison across a full 7-day operating week (672 fifteen-minu
 
 | What We Measured | Without AI (Standard Depot) | With VoltShift AI | What It Means |
 | :--- | :--- | :--- | :--- |
-| Total 7-Day Electricity Bill | Rs 780.00 - Rs 820.00 | Rs 75.00 - Rs 85.00 | ~90% Money Saved |
-| Average Cost Per Day | Rs 115.00 / day | Rs 11.50 / day | Massive operational savings |
-| Peak Grid Power Used | 15.0 kW (Heavy strain) | 7.0 kW (Smooth) | Stays safely under transformer ceiling |
-| Transformer Fuse Blown | At constant risk | 0 breaches | Deterministic safety shield prevents overloading |
-| Van Readiness at 6:00 AM | 100% Full | 100% Full | Logistics schedules are never delayed |
+| Total 7-Day Electricity Bill | Rs 2,392.17 | Rs 420.55 | 82.4% bill reduction |
+| Average Cost Per Day | Rs 341.74 / day | Rs 60.08 / day | Lower daily grid cost |
+| Peak Grid Power Used | 15.00 kW | 15.00 kW | At the 15 kW transformer limit, never above it |
+| Transformer Breaches (>15 kW) | 0 | 0 | No breaches in either run |
+| Total Rooftop Solar Generated | n/a | 657.04 kWh | Solar output over 7 days |
+| BESS Energy Dispatched | 0.00 kWh | 199.21 kWh | Battery used to cover evening charging |
+| Van Readiness at 6:00 AM | Full each morning | 7 of 7 mornings at 10.0 kWh (target 9.5 kWh) | Requirement met on every day |
+
+Source: `reports/benchmark_summary.md` and `reports/telemetry_7day.csv`. Readiness can be checked with `python verify_readiness.py`.
+
+**Single-day test (seed 25):** the PPO policy costs Rs 130.61 against the baseline's Rs 109.57, so there is no saving on that day. The 7-day average is the committed result, but this single-day result is also true of the current policy.
+
+**Note on peak draw:** the PPO policy now reaches the 15.00 kW limit during evening charging, the same as the baseline. An earlier version kept peak draw near 7 kW but left the vans uncharged, so it is not a valid comparison. The baseline is a greedy charger that plugs each van in at 18:00 at up to 5 kW.
 
 ---
 
@@ -54,6 +62,11 @@ The system uses two AI pieces working together with a safety rule:
 
 ---
 
+## 3a. Known Issues
+
+- **Forecaster target:** in `src/forecaster.py`, the last 4 target values are filled with 0 because of `shift(-4).fill_null(0.0)`. This affects only the final hour of the training data and does not change the reported R² of 0.948.
+- **Single-day performance:** on seed 25 the policy does not beat the baseline. A longer evaluation across more seeds would give a fuller picture.
+
 ## 4. Project Structure
 
 ```text
@@ -72,5 +85,5 @@ VoltShift-RL/
 |   `-- benchmark_summary.md  # Final financial scorecard
 |-- train.py                  # Trains the AI agent on CPU
 |-- run.py                    # 7-day 3D SCADA digital twin (opens in your browser)
-|-- api.py                    # Production FastAPI edge service (sub-10ms response)
+|-- api.py                    # Production FastAPI edge service (about 10 to 20 ms per request)
 `-- test_dispatch.py          # Automated verification script using real dataset rows
